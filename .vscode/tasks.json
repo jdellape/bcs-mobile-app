@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start FastAPI",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+      "options": {
+        "cwd": "${workspaceFolder}/../bcs-fastapi",
+        "env": {
+          "GOOGLE_APPLICATION_CREDENTIALS": "streamlit-sources.json"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Expo",
+      "type": "shell",
+      "command": "npx expo start --port 8082",
+      "options": {
+        "cwd": "${workspaceFolder}/agency-app"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Full Stack",
+      "dependsOn": [
+        "Start FastAPI",
+        "Start Expo"
+      ],
+      "dependsOrder": "parallel",
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}

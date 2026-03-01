@@ -1,0 +1,42 @@
+---
+description: Blair County Resources project structure, stack, and conventions
+alwaysApply: true
+---
+
+# Blair County Resources — Project Context
+
+## What this project is
+A mobile app that helps users find social service agencies in Blair County, PA. Users can search agencies by service category and (soon) add/edit agency information.
+
+## Repository layout
+- `agency-app/` — React Native (Expo) mobile app
+  - `App.js` — single-file app with Search and Manage Agency screens
+  - Uses `@react-native-picker/picker` for dropdowns
+- `../bcs-fastapi/` — FastAPI backend (sibling directory)
+  - `main.py` — API endpoints with in-memory caching (1 hour TTL)
+  - `firebase_client.py` — Firestore connection using service account credentials
+  - `.venv/` — Python 3.12 virtualenv with fastapi, uvicorn, firebase-admin
+- `.vscode/tasks.json` — auto-start tasks for both servers on workspace open
+
+## How to run locally
+- Open `blair-county-agencies.code-workspace` (multi-root workspace)
+- Tasks auto-start both servers:
+  - FastAPI: uvicorn on port 8000 (uses `GOOGLE_APPLICATION_CREDENTIALS` env var)
+  - Expo: dev server on port 8082
+- Or manually: see `.vscode/tasks.json` for exact commands
+
+## API endpoints
+- `GET /services` — sorted list of all unique service names
+- `GET /agencies` — list of all agency names and IDs
+- `GET /agencies/{agency_id}` — single agency detail
+- `GET /agencies/by-service/{service_name:path}` — agencies providing a given service
+- `POST /agencies` — create new agency (JSON body with `AgencyPayload` schema)
+- `PUT /agencies/{agency_name:path}` — update existing agency (preserves schedules)
+
+## Firestore data model
+Each agency document has: name, address_line_one, city, state_code, zip_code, phone_num, contact_name, email, services_description, hours_of_operation, and a `services` dict where keys are service names and values contain `{has_schedule, schedule?}`.
+
+## Current status / known issues
+- Write endpoints (POST/PUT) require Firestore write permissions — the current service account is read-only
+- Mobile `API_BASE` is hardcoded to a local network IP — update for your network
+- Schedule editing is only available via the Streamlit app (github.com/jdellape/blair-county-resources), not the mobile app
