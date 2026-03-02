@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE?.trim().replace(/\/$/, "");
@@ -264,7 +263,16 @@ function ManageScreen({ services, agencyNames, onSaved }) {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [selectedServices, setSelectedServices] = useState({});
   const [editAgencyName, setEditAgencyName] = useState("");
+  const [agencyQuery, setAgencyQuery] = useState("");
+  const [isAgencyPanelOpen, setIsAgencyPanelOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const normalizedAgencyQuery = (agencyQuery || "").trim().toLowerCase();
+  const filteredAgencyNames = normalizedAgencyQuery
+    ? agencyNames.filter((name) =>
+        name.toLowerCase().includes(normalizedAgencyQuery)
+      )
+    : agencyNames;
 
   const updateField = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -276,6 +284,7 @@ function ManageScreen({ services, agencyNames, onSaved }) {
     setForm({ ...EMPTY_FORM });
     setSelectedServices({});
     setEditAgencyName("");
+    setAgencyQuery("");
   };
 
   const loadAgencyForEdit = async (name) => {
@@ -348,8 +357,68 @@ function ManageScreen({ services, agencyNames, onSaved }) {
     }
   };
 
+  const handleDeleteAgency = () => {
+    if (!editAgencyName) {
+      Alert.alert("Select Agency", "Choose an agency to delete first.");
+      return;
+    }
+
+    Alert.alert(
+      "Delete Agency",
+      `Are you sure you want to permanently delete "${editAgencyName}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setSubmitting(true);
+            try {
+              const res = await fetch(
+                buildApiUrl(`/agencies/${encodeURIComponent(editAgencyName)}`),
+                { method: "DELETE" }
+              );
+
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                Alert.alert("Error", err.detail || "Failed to delete agency");
+                return;
+              }
+
+              Alert.alert("Success", "Agency deleted!");
+              resetForm();
+              onSaved();
+            } catch (e) {
+              Alert.alert("Network Error", e.message);
+            } finally {
+              setSubmitting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAgencySelection = (name) => {
+    if (!name) return;
+
+    if (name === editAgencyName) {
+      resetForm();
+      return;
+    }
+
+    setAgencyQuery("");
+    loadAgencyForEdit(name);
+    setIsAgencyPanelOpen(false);
+  };
+
+  const showFullAgencySelection = mode === "edit" && !editAgencyName;
+
   return (
-    <ScrollView style={styles.manageContainer}>
+    <ScrollView
+      style={styles.manageContainer}
+      contentContainerStyle={showFullAgencySelection ? styles.manageContainerExpanded : undefined}
+    >
       <Text style={styles.heading}>Manage Agencies</Text>
 
       {/* Add / Edit toggle */}
@@ -372,112 +441,203 @@ function ManageScreen({ services, agencyNames, onSaved }) {
         </TouchableOpacity>
       </View>
 
-      {/* Agency picker for edit mode */}
+      {/* Agency selector for edit mode */}
       {mode === "edit" && (
-        <Picker
-          selectedValue={editAgencyName}
-          onValueChange={loadAgencyForEdit}
-          style={styles.picker}
-        >
-          <Picker.Item label="-- Select Agency --" value="" />
-          {agencyNames.map((n) => (
-            <Picker.Item key={n} label={n} value={n} />
-          ))}
-        </Picker>
+        <View style={styles.agencySelectorWrap}>
+          <TouchableOpacity
+            style={styles.servicesToggleBtn}
+            onPress={() => setIsAgencyPanelOpen((prev) => !prev)}
+          >
+            <Text style={styles.servicesToggleText}>Available Agencies</Text>
+            <Ionicons
+              name={isAgencyPanelOpen ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={theme.colors.accent}
+            />
+          </TouchableOpacity>
+
+          {!isAgencyPanelOpen && !!editAgencyName && (
+            <Text style={styles.activeServicesCollapsedText}>{editAgencyName}</Text>
+          )}
+
+          {isAgencyPanelOpen && (
+            <View
+              style={[
+                styles.agencyPanel,
+                showFullAgencySelection && styles.agencyPanelExpanded,
+              ]}
+            >
+              <TextInput
+                style={styles.serviceFilterInput}
+                placeholder="Filter agencies"
+                placeholderTextColor={theme.colors.inputPlaceholder}
+                value={agencyQuery}
+                onChangeText={setAgencyQuery}
+              />
+
+              <View style={styles.searchMetaRow}>
+                <Text style={styles.searchMetaLabel}>
+                  {editAgencyName ? "1 agency selected" : "No agency selected"}
+                </Text>
+                {!!editAgencyName && (
+                  <TouchableOpacity onPress={resetForm}>
+                    <Text style={styles.clearText}>Clear</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <ScrollView
+                style={[
+                  styles.agencyList,
+                  showFullAgencySelection && styles.agencyListExpanded,
+                ]}
+                nestedScrollEnabled
+              >
+                {filteredAgencyNames.map((name) => {
+                  const active = name === editAgencyName;
+                  return (
+                    <TouchableOpacity
+                      key={name}
+                      style={[styles.serviceRow, active && styles.serviceRowActive]}
+                      onPress={() => handleAgencySelection(name)}
+                    >
+                      <Text
+                        style={[
+                          styles.serviceRowText,
+                          active && styles.serviceRowTextActive,
+                        ]}
+                      >
+                        {name}
+                      </Text>
+                      {active && (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={20}
+                          color={theme.colors.accent}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+        </View>
       )}
 
-      {/* Form fields */}
-      <Text style={styles.sectionTitle}>Required</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.name}
-        onChangeText={(v) => updateField("name", v)}
-        editable={mode === "add"}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Address"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.address_line_one}
-        onChangeText={(v) => updateField("address_line_one", v)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="City"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.city}
-        onChangeText={(v) => updateField("city", v)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Zip Code"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.zip_code}
-        onChangeText={(v) => updateField("zip_code", v)}
-        keyboardType="numeric"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone Number"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.phone_num}
-        onChangeText={(v) => updateField("phone_num", v)}
-        keyboardType="phone-pad"
-      />
-
-      <Text style={styles.sectionTitle}>Optional</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Contact Name"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.contact_name}
-        onChangeText={(v) => updateField("contact_name", v)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.email}
-        onChangeText={(v) => updateField("email", v)}
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={[styles.input, { height: 80, textAlignVertical: "top" }]}
-        placeholder="Description of Services"
-        placeholderTextColor={theme.colors.inputPlaceholder}
-        value={form.services_description}
-        onChangeText={(v) => updateField("services_description", v)}
-        multiline
-      />
-
-      {/* Service checkboxes */}
-      <Text style={styles.sectionTitle}>Services Provided</Text>
-      {services.map((svc) => (
-        <TouchableOpacity
-          key={svc}
-          style={styles.checkboxRow}
-          onPress={() => toggleService(svc)}
-        >
-          <View style={[styles.checkbox, selectedServices[svc] && styles.checkboxChecked]}>
-            {selectedServices[svc] && <Text style={styles.checkmark}>✓</Text>}
-          </View>
-          <Text style={styles.checkboxLabel}>{svc}</Text>
-        </TouchableOpacity>
-      ))}
-
-      {/* Submit */}
-      <View style={{ marginTop: 20, marginBottom: 40 }}>
-        {submitting ? (
-          <ActivityIndicator size="large" />
-        ) : (
-          <Button
-            title={mode === "add" ? "Submit New Agency" : "Update Agency"}
-            onPress={handleSubmit}
+      {(mode === "add" || !!editAgencyName) ? (
+        <>
+          {/* Form fields */}
+          <Text style={styles.sectionTitle}>Required</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Name"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.name}
+            onChangeText={(v) => updateField("name", v)}
+            editable={mode === "add"}
           />
-        )}
-      </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Address"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.address_line_one}
+            onChangeText={(v) => updateField("address_line_one", v)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="City"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.city}
+            onChangeText={(v) => updateField("city", v)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Zip Code"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.zip_code}
+            onChangeText={(v) => updateField("zip_code", v)}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Phone Number"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.phone_num}
+            onChangeText={(v) => updateField("phone_num", v)}
+            keyboardType="phone-pad"
+          />
+
+          <Text style={styles.sectionTitle}>Optional</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Contact Name"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.contact_name}
+            onChangeText={(v) => updateField("contact_name", v)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.email}
+            onChangeText={(v) => updateField("email", v)}
+            keyboardType="email-address"
+          />
+          <TextInput
+            style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+            placeholder="Description of Services"
+            placeholderTextColor={theme.colors.inputPlaceholder}
+            value={form.services_description}
+            onChangeText={(v) => updateField("services_description", v)}
+            multiline
+          />
+
+          {/* Service checkboxes */}
+          <Text style={styles.sectionTitle}>Services Provided</Text>
+          {services.map((svc) => (
+            <TouchableOpacity
+              key={svc}
+              style={styles.checkboxRow}
+              onPress={() => toggleService(svc)}
+            >
+              <View style={[styles.checkbox, selectedServices[svc] && styles.checkboxChecked]}>
+                {selectedServices[svc] && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.checkboxLabel}>{svc}</Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Submit */}
+          <View style={{ marginTop: 20, marginBottom: 40 }}>
+            {submitting ? (
+              <ActivityIndicator size="large" />
+            ) : (
+              <Button
+                title={mode === "add" ? "Submit New Agency" : "Update Agency"}
+                onPress={handleSubmit}
+              />
+            )}
+
+            {mode === "edit" && (
+              <TouchableOpacity
+                style={[
+                  styles.deleteBtn,
+                  (!editAgencyName || submitting) && styles.deleteBtnDisabled,
+                ]}
+                onPress={handleDeleteAgency}
+                disabled={!editAgencyName || submitting}
+              >
+                <Text style={styles.deleteBtnText}>Delete Agency</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </>
+      ) : (
+        <Text style={styles.resultsHint}>
+          Select an agency above to load its details for editing.
+        </Text>
+      )}
     </ScrollView>
   );
 }
@@ -599,6 +759,9 @@ const styles = StyleSheet.create({
   manageContainer: {
     flex: 1,
   },
+  manageContainerExpanded: {
+    flexGrow: 1,
+  },
   bottomTabBar: {
     flexDirection: "row",
     borderTopWidth: 1,
@@ -632,10 +795,28 @@ const styles = StyleSheet.create({
   searchContainer: {
     flex: 1,
   },
-  picker: {
+  agencySelectorWrap: {
     marginBottom: 10,
-    color: theme.colors.textPrimary,
+  },
+  agencyPanel: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 4,
     backgroundColor: theme.colors.surfacePrimary,
+    maxHeight: 320,
+  },
+  agencyPanelExpanded: {
+    flex: 1,
+    maxHeight: undefined,
+  },
+  agencyList: {
+    maxHeight: 240,
+  },
+  agencyListExpanded: {
+    flex: 1,
+    maxHeight: undefined,
   },
   servicesToggleBtn: {
     borderWidth: 1,
@@ -860,5 +1041,20 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+  },
+  deleteBtn: {
+    marginTop: 12,
+    borderRadius: 6,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "#b91c1c",
+  },
+  deleteBtnDisabled: {
+    opacity: 0.45,
+  },
+  deleteBtnText: {
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
