@@ -100,7 +100,10 @@ function SearchScreen({ services }) {
       responses.forEach((agencyList, idx) => {
         const sourceService = activeServices[idx];
         agencyList.forEach((agency) => {
-          const key = agency.name || `${agency.address_line_one}-${agency.phone_num}`;
+          const key =
+            agency.id ||
+            agency.name ||
+            `${agency.address_line_one}-${agency.phone_num}`;
           if (!mergedAgencies.has(key)) {
             mergedAgencies.set(key, { ...agency, matched_services: [sourceService] });
             return;
@@ -244,7 +247,9 @@ function SearchScreen({ services }) {
           ) : (
             <FlatList
               data={agencies}
-              keyExtractor={(_, i) => i.toString()}
+              keyExtractor={(item, i) =>
+                item.id || item.name || `agency-${i}`
+              }
               renderItem={renderAgency}
               style={styles.resultsList}
               contentContainerStyle={{ paddingBottom: 8 }}
@@ -258,21 +263,24 @@ function SearchScreen({ services }) {
 
 // --------------- Manage Agency Screen ---------------
 
-function ManageScreen({ services, agencyNames, onSaved }) {
+function ManageScreen({ services, agencyList, onSaved }) {
   const [mode, setMode] = useState("add");
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [selectedServices, setSelectedServices] = useState({});
-  const [editAgencyName, setEditAgencyName] = useState("");
+  const [editAgencyId, setEditAgencyId] = useState("");
   const [agencyQuery, setAgencyQuery] = useState("");
   const [isAgencyPanelOpen, setIsAgencyPanelOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const normalizedAgencyQuery = (agencyQuery || "").trim().toLowerCase();
-  const filteredAgencyNames = normalizedAgencyQuery
-    ? agencyNames.filter((name) =>
-        name.toLowerCase().includes(normalizedAgencyQuery)
+  const filteredAgencies = normalizedAgencyQuery
+    ? agencyList.filter((a) =>
+        (a.name || "").toLowerCase().includes(normalizedAgencyQuery)
       )
-    : agencyNames;
+    : agencyList;
+
+  const selectedAgencyLabel =
+    agencyList.find((a) => a.id === editAgencyId)?.name || "";
 
   const updateField = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -283,16 +291,16 @@ function ManageScreen({ services, agencyNames, onSaved }) {
   const resetForm = () => {
     setForm({ ...EMPTY_FORM });
     setSelectedServices({});
-    setEditAgencyName("");
+    setEditAgencyId("");
     setAgencyQuery("");
   };
 
-  const loadAgencyForEdit = async (name) => {
-    if (!name) return resetForm();
-    setEditAgencyName(name);
+  const loadAgencyForEdit = async (agencyId) => {
+    if (!agencyId) return resetForm();
+    setEditAgencyId(agencyId);
     try {
       const res = await fetch(
-        buildApiUrl(`/agencies/${encodeURIComponent(name)}`)
+        buildApiUrl(`/agencies/${encodeURIComponent(agencyId)}`)
       );
       const data = await res.json();
       setForm({
@@ -331,7 +339,7 @@ function ManageScreen({ services, agencyNames, onSaved }) {
     try {
       const isEdit = mode === "edit";
       const url = isEdit
-        ? buildApiUrl(`/agencies/${encodeURIComponent(editAgencyName)}`)
+        ? buildApiUrl(`/agencies/${encodeURIComponent(editAgencyId)}`)
         : buildApiUrl("/agencies");
       const method = isEdit ? "PUT" : "POST";
 
@@ -358,14 +366,14 @@ function ManageScreen({ services, agencyNames, onSaved }) {
   };
 
   const handleDeleteAgency = () => {
-    if (!editAgencyName) {
+    if (!editAgencyId) {
       Alert.alert("Select Agency", "Choose an agency to delete first.");
       return;
     }
 
     Alert.alert(
       "Delete Agency",
-      `Are you sure you want to permanently delete "${editAgencyName}"?`,
+      `Are you sure you want to permanently delete "${form.name || selectedAgencyLabel}"?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -375,7 +383,7 @@ function ManageScreen({ services, agencyNames, onSaved }) {
             setSubmitting(true);
             try {
               const res = await fetch(
-                buildApiUrl(`/agencies/${encodeURIComponent(editAgencyName)}`),
+                buildApiUrl(`/agencies/${encodeURIComponent(editAgencyId)}`),
                 { method: "DELETE" }
               );
 
@@ -399,20 +407,20 @@ function ManageScreen({ services, agencyNames, onSaved }) {
     );
   };
 
-  const handleAgencySelection = (name) => {
-    if (!name) return;
+  const handleAgencySelection = (agencyId) => {
+    if (!agencyId) return;
 
-    if (name === editAgencyName) {
+    if (agencyId === editAgencyId) {
       resetForm();
       return;
     }
 
     setAgencyQuery("");
-    loadAgencyForEdit(name);
+    loadAgencyForEdit(agencyId);
     setIsAgencyPanelOpen(false);
   };
 
-  const showFullAgencySelection = mode === "edit" && !editAgencyName;
+  const showFullAgencySelection = mode === "edit" && !editAgencyId;
 
   return (
     <ScrollView
@@ -456,8 +464,10 @@ function ManageScreen({ services, agencyNames, onSaved }) {
             />
           </TouchableOpacity>
 
-          {!isAgencyPanelOpen && !!editAgencyName && (
-            <Text style={styles.activeServicesCollapsedText}>{editAgencyName}</Text>
+          {!isAgencyPanelOpen && !!editAgencyId && (
+            <Text style={styles.activeServicesCollapsedText}>
+              {selectedAgencyLabel}
+            </Text>
           )}
 
           {isAgencyPanelOpen && (
@@ -477,9 +487,9 @@ function ManageScreen({ services, agencyNames, onSaved }) {
 
               <View style={styles.searchMetaRow}>
                 <Text style={styles.searchMetaLabel}>
-                  {editAgencyName ? "1 agency selected" : "No agency selected"}
+                  {editAgencyId ? "1 agency selected" : "No agency selected"}
                 </Text>
-                {!!editAgencyName && (
+                {!!editAgencyId && (
                   <TouchableOpacity onPress={resetForm}>
                     <Text style={styles.clearText}>Clear</Text>
                   </TouchableOpacity>
@@ -493,13 +503,13 @@ function ManageScreen({ services, agencyNames, onSaved }) {
                 ]}
                 nestedScrollEnabled
               >
-                {filteredAgencyNames.map((name) => {
-                  const active = name === editAgencyName;
+                {filteredAgencies.map((a) => {
+                  const active = a.id === editAgencyId;
                   return (
                     <TouchableOpacity
-                      key={name}
+                      key={a.id}
                       style={[styles.serviceRow, active && styles.serviceRowActive]}
-                      onPress={() => handleAgencySelection(name)}
+                      onPress={() => handleAgencySelection(a.id)}
                     >
                       <Text
                         style={[
@@ -507,7 +517,7 @@ function ManageScreen({ services, agencyNames, onSaved }) {
                           active && styles.serviceRowTextActive,
                         ]}
                       >
-                        {name}
+                        {a.name}
                       </Text>
                       {active && (
                         <Ionicons
@@ -525,7 +535,7 @@ function ManageScreen({ services, agencyNames, onSaved }) {
         </View>
       )}
 
-      {(mode === "add" || !!editAgencyName) ? (
+      {(mode === "add" || !!editAgencyId) ? (
         <>
           {/* Form fields */}
           <Text style={styles.sectionTitle}>Required</Text>
@@ -623,10 +633,10 @@ function ManageScreen({ services, agencyNames, onSaved }) {
               <TouchableOpacity
                 style={[
                   styles.deleteBtn,
-                  (!editAgencyName || submitting) && styles.deleteBtnDisabled,
+                  (!editAgencyId || submitting) && styles.deleteBtnDisabled,
                 ]}
                 onPress={handleDeleteAgency}
-                disabled={!editAgencyName || submitting}
+                disabled={!editAgencyId || submitting}
               >
                 <Text style={styles.deleteBtnText}>Delete Agency</Text>
               </TouchableOpacity>
@@ -647,7 +657,7 @@ function ManageScreen({ services, agencyNames, onSaved }) {
 export default function App() {
   const [screen, setScreen] = useState("search");
   const [services, setServices] = useState([]);
-  const [agencyNames, setAgencyNames] = useState([]);
+  const [agencyList, setAgencyList] = useState([]);
 
   const loadServices = async () => {
     try {
@@ -659,24 +669,28 @@ export default function App() {
     }
   };
 
-  const loadAgencyNames = async () => {
+  const loadAgencyList = async () => {
     try {
       const res = await fetch(buildApiUrl("/agencies"));
       const data = await res.json();
-      setAgencyNames(data.map((a) => a.name).sort());
+      setAgencyList(
+        data
+          .map((a) => ({ id: a.id, name: a.name }))
+          .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+      );
     } catch (e) {
-      console.error("Error fetching agency names:", e);
+      console.error("Error fetching agency list:", e);
     }
   };
 
   useEffect(() => {
     loadServices();
-    loadAgencyNames();
+    loadAgencyList();
   }, []);
 
   const handleSaved = () => {
     loadServices();
-    loadAgencyNames();
+    loadAgencyList();
   };
 
   return (
@@ -687,7 +701,7 @@ export default function App() {
         ) : (
           <ManageScreen
             services={services}
-            agencyNames={agencyNames}
+            agencyList={agencyList}
             onSaved={handleSaved}
           />
         )}
