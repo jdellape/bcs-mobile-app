@@ -31,6 +31,13 @@ const theme = {
     textOnAccent: "#0f172a",
     inputPlaceholder: "#cbd5e1",
   },
+  fonts: {
+    caption: 14,
+    body: 17,
+    bodyLarge: 18,
+    title: 20,
+    screenTitle: 26,
+  },
 };
 
 const buildApiUrl = (path) => {
@@ -54,6 +61,40 @@ const EMPTY_FORM = {
 };
 
 // --------------- Search Screen ---------------
+
+function AgencySearchCard({ item }) {
+  const [showDescription, setShowDescription] = useState(false);
+  const description = (item.services_description || "").trim();
+  const agencyKey = item.id || item.name || "";
+
+  useEffect(() => {
+    setShowDescription(false);
+  }, [agencyKey]);
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardName}>{item.name}</Text>
+      <Text style={styles.cardDetail}>{item.address_line_one}</Text>
+      <Text style={styles.cardDetail}>{item.phone_num}</Text>
+      {!!description && (
+        <>
+          {showDescription && (
+            <Text style={styles.cardDescription}>{description}</Text>
+          )}
+          <TouchableOpacity
+            onPress={() => setShowDescription((prev) => !prev)}
+            accessibilityRole="button"
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          >
+            <Text style={styles.cardMoreBtn}>
+              {showDescription ? "See Less" : "See More Information"}
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
 
 function SearchScreen({ services }) {
   const [agencies, setAgencies] = useState([]);
@@ -105,14 +146,7 @@ function SearchScreen({ services }) {
     };
   }, [selectedService]);
 
-  const renderAgency = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.cardName}>{item.name}</Text>
-      <Text style={styles.cardDetail}>{item.address_line_one}</Text>
-      <Text style={styles.cardDetail}>{item.phone_num}</Text>
-      <Text style={styles.cardDescription}>{item.services_description}</Text>
-    </View>
-  );
+  const renderAgency = ({ item }) => <AgencySearchCard item={item} />;
 
   const renderServicePicker = () => (
     <>
@@ -636,7 +670,7 @@ export default function App() {
         >
           <Ionicons
             name={screen === "search" ? "search" : "search-outline"}
-            size={20}
+            size={22}
             color={
               screen === "search"
                 ? theme.colors.accent
@@ -659,7 +693,7 @@ export default function App() {
         >
           <MaterialCommunityIcons
             name={screen === "manage" ? "pencil-plus" : "pencil-plus-outline"}
-            size={20}
+            size={22}
             color={
               screen === "manage"
                 ? theme.colors.accent
@@ -713,7 +747,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bottomTabText: {
-    fontSize: 12,
+    fontSize: theme.fonts.caption,
     marginTop: 2,
     color: theme.colors.textMuted,
   },
@@ -723,7 +757,7 @@ const styles = StyleSheet.create({
   },
 
   heading: {
-    fontSize: 22,
+    fontSize: theme.fonts.screenTitle,
     fontWeight: "bold",
     marginBottom: 12,
     color: theme.colors.textPrimary,
@@ -770,18 +804,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   servicesToggleText: {
-    fontSize: 16,
+    fontSize: theme.fonts.bodyLarge,
     fontWeight: "600",
     color: theme.colors.textPrimary,
   },
   activeServicesCollapsedText: {
-    fontSize: 12,
+    fontSize: theme.fonts.caption,
     color: theme.colors.textMuted,
     marginTop: -2,
     marginBottom: 8,
   },
   servicePickerLabel: {
-    fontSize: 14,
+    fontSize: theme.fonts.body,
     fontWeight: "600",
     color: theme.colors.textSecondary,
     marginBottom: 6,
@@ -799,7 +833,7 @@ const styles = StyleSheet.create({
   },
   servicePickerItem: {
     color: theme.colors.textPrimary,
-    fontSize: 16,
+    fontSize: theme.fonts.bodyLarge,
   },
   serviceFilterInput: {
     borderWidth: 1,
@@ -807,7 +841,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    fontSize: 16,
+    fontSize: theme.fonts.bodyLarge,
     marginBottom: 12,
     color: theme.colors.textPrimary,
     backgroundColor: theme.colors.surfaceSecondary,
@@ -820,13 +854,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   searchMetaLabel: {
-    fontSize: 14,
+    fontSize: theme.fonts.body,
     color: theme.colors.textSecondary,
     flex: 1,
     marginRight: 8,
   },
   clearText: {
-    fontSize: 14,
+    fontSize: theme.fonts.body,
     color: theme.colors.accentSoft,
     fontWeight: "600",
   },
@@ -847,7 +881,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceActive,
   },
   serviceRowText: {
-    fontSize: 16,
+    fontSize: theme.fonts.bodyLarge,
     color: theme.colors.textPrimary,
   },
   serviceRowTextActive: {
@@ -865,12 +899,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   resultsHeading: {
-    fontSize: 16,
+    fontSize: theme.fonts.title,
     fontWeight: "700",
     color: theme.colors.textPrimary,
   },
   resultsHint: {
-    fontSize: 13,
+    fontSize: theme.fonts.body,
+    lineHeight: 24,
     color: theme.colors.textSecondary,
     marginTop: 6,
   },
@@ -895,17 +930,27 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: theme.fonts.title,
     marginBottom: 4,
     color: theme.colors.textPrimary,
   },
   cardDetail: {
+    fontSize: theme.fonts.body,
+    lineHeight: 24,
     color: theme.colors.textSecondary,
   },
   cardDescription: {
-    marginTop: 6,
+    marginTop: 8,
+    fontSize: theme.fonts.body,
+    lineHeight: 24,
     fontStyle: "italic",
     color: theme.colors.textMuted,
+  },
+  cardMoreBtn: {
+    marginTop: 10,
+    fontSize: theme.fonts.body,
+    color: theme.colors.accentSoft,
+    fontWeight: "600",
   },
 
   toggleRow: {
@@ -926,7 +971,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accent,
   },
   toggleText: {
-    fontSize: 14,
+    fontSize: theme.fonts.body,
     color: theme.colors.textSecondary,
   },
   toggleTextActive: {
@@ -935,7 +980,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 16,
+    fontSize: theme.fonts.title,
     fontWeight: "bold",
     marginTop: 14,
     marginBottom: 8,
@@ -946,7 +991,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: 6,
     padding: 10,
-    fontSize: 15,
+    fontSize: theme.fonts.bodyLarge,
     marginBottom: 10,
     color: theme.colors.textPrimary,
     backgroundColor: theme.colors.surfaceSecondary,
@@ -973,11 +1018,11 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: theme.fonts.body,
     fontWeight: "bold",
   },
   checkboxLabel: {
-    fontSize: 14,
+    fontSize: theme.fonts.body,
     color: theme.colors.textSecondary,
   },
   deleteBtn: {
@@ -993,6 +1038,6 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     color: "#ffffff",
     fontWeight: "700",
-    fontSize: 15,
+    fontSize: theme.fonts.bodyLarge,
   },
 });
