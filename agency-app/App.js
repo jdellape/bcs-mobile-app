@@ -12,24 +12,28 @@ import {
   Alert,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE?.trim().replace(/\/$/, "");
+
+/** Palette aligned with Streamlit default dark theme. */
 const theme = {
   colors: {
-    accent: "#38bdf8",
-    accentSoft: "#7dd3fc",
-    appBackground: "#2a2f36",
-    surfacePrimary: "#353b44",
-    surfaceSecondary: "#3f4650",
-    surfaceActive: "#4b5968",
-    border: "#5b6472",
-    textPrimary: "#f1f5f9",
-    textPrimaryStrong: "#f8fdff",
-    textSecondary: "#dbe4ee",
-    textMuted: "#cbd5e1",
-    textOnAccent: "#0f172a",
-    inputPlaceholder: "#cbd5e1",
+    accent: "#FF4B4B",
+    accentSoft: "#FF6B6B",
+    appBackground: "#0E1117",
+    surfacePrimary: "#262730",
+    surfaceSecondary: "#262730",
+    surfaceActive: "#31333F",
+    border: "#464B5D",
+    textPrimary: "#FAFAFA",
+    textPrimaryStrong: "#FFFFFF",
+    textSecondary: "#C4C8D4",
+    textMuted: "#808495",
+    textOnAccent: "#FFFFFF",
+    inputPlaceholder: "#808495",
+    danger: "#FF6B6B",
   },
   fonts: {
     caption: 14,
@@ -651,6 +655,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       <View style={styles.contentArea}>
         {screen === "search" ? (
           <SearchScreen services={services} />
@@ -926,7 +931,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderRadius: 8,
     marginBottom: 10,
-    backgroundColor: theme.colors.surfaceSecondary,
+    backgroundColor: theme.colors.surfacePrimary,
   },
   cardName: {
     fontWeight: "bold",
@@ -1017,7 +1022,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.accent,
   },
   checkmark: {
-    color: "#fff",
+    color: theme.colors.textOnAccent,
     fontSize: theme.fonts.body,
     fontWeight: "bold",
   },
@@ -1030,13 +1035,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 12,
     alignItems: "center",
-    backgroundColor: "#b91c1c",
+    backgroundColor: theme.colors.danger,
   },
   deleteBtnDisabled: {
     opacity: 0.45,
   },
   deleteBtnText: {
-    color: "#ffffff",
+    color: theme.colors.textOnAccent,
     fontWeight: "700",
     fontSize: theme.fonts.bodyLarge,
   },
