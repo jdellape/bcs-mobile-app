@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE?.trim().replace(/\/$/, "");
@@ -57,80 +58,52 @@ const EMPTY_FORM = {
 function SearchScreen({ services }) {
   const [agencies, setAgencies] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [serviceQuery, setServiceQuery] = useState("");
-  const [isServicePanelOpen, setIsServicePanelOpen] = useState(true);
-  const [selectedServices, setSelectedServices] = useState({});
+  const [selectedService, setSelectedService] = useState("");
+  const agencyListRef = useRef(null);
 
-  const normalizedQuery = (serviceQuery || "").trim().toLowerCase();
-  const filteredServices = normalizedQuery
-    ? services.filter((svc) => svc.toLowerCase().includes(normalizedQuery))
-    : services;
-  const activeServices = Object.keys(selectedServices).filter(
-    (svc) => selectedServices[svc]
-  );
-  const hasActiveServices = activeServices.length > 0;
-
-  const toggleService = (serviceName) => {
-    setSelectedServices((prev) => ({ ...prev, [serviceName]: !prev[serviceName] }));
-  };
-
-  const clearSelection = () => {
-    setSelectedServices({});
-    setServiceQuery("");
-    setAgencies([]);
-  };
-
-  const fetchAgencies = async () => {
-    if (activeServices.length === 0) {
-      setAgencies([]);
-      return;
+  useLayoutEffect(() => {
+    if (selectedService) {
+      agencyListRef.current?.scrollToOffset({ offset: 0, animated: false });
     }
-
-    setLoading(true);
-    try {
-      const responses = await Promise.all(
-        activeServices.map((serviceName) =>
-          fetch(
-            buildApiUrl(`/agencies/by-service/${encodeURIComponent(serviceName)}`)
-          ).then((res) => (res.ok ? res.json() : []))
-        )
-      );
-
-      const mergedAgencies = new Map();
-      responses.forEach((agencyList, idx) => {
-        const sourceService = activeServices[idx];
-        agencyList.forEach((agency) => {
-          const key =
-            agency.id ||
-            agency.name ||
-            `${agency.address_line_one}-${agency.phone_num}`;
-          if (!mergedAgencies.has(key)) {
-            mergedAgencies.set(key, { ...agency, matched_services: [sourceService] });
-            return;
-          }
-          const existing = mergedAgencies.get(key);
-          if (!existing.matched_services.includes(sourceService)) {
-            existing.matched_services.push(sourceService);
-          }
-        });
-      });
-
-      setAgencies(
-        Array.from(mergedAgencies.values()).sort((a, b) =>
-          (a.name || "").localeCompare(b.name || "")
-        )
-      );
-    } catch (e) {
-      console.error("Error fetching agencies:", e);
-      Alert.alert("Network Error", "Could not load agencies for selected services.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [selectedService]);
 
   useEffect(() => {
-    fetchAgencies();
-  }, [selectedServices]);
+    if (!selectedService) {
+      setAgencies([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          buildApiUrl(
+            `/agencies/by-service/${encodeURIComponent(selectedService)}`
+          )
+        );
+        const data = res.ok ? await res.json() : [];
+        if (!cancelled) {
+          setAgencies(
+            [...data].sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+          );
+        }
+      } catch (e) {
+        console.error("Error fetching agencies:", e);
+        if (!cancelled) {
+          Alert.alert("Network Error", "Could not load agencies for that service.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedService]);
 
   const renderAgency = ({ item }) => (
     <View style={styles.card}>
@@ -138,124 +111,73 @@ function SearchScreen({ services }) {
       <Text style={styles.cardDetail}>{item.address_line_one}</Text>
       <Text style={styles.cardDetail}>{item.phone_num}</Text>
       <Text style={styles.cardDescription}>{item.services_description}</Text>
-      {!!item.matched_services?.length && (
-        <Text style={styles.cardMeta}>
-          Matches: {item.matched_services.join(", ")}
-        </Text>
-      )}
+    </View>
+  );
+
+  const renderServicePicker = () => (
+    <>
+      <Text style={styles.heading}>Find Services</Text>
+      <Text style={styles.servicePickerLabel}>Service</Text>
+      <View style={styles.servicePickerWrap}>
+        <Picker
+          selectedValue={selectedService}
+          onValueChange={setSelectedService}
+          style={styles.servicePicker}
+          dropdownIconColor={theme.colors.accent}
+          itemStyle={styles.servicePickerItem}
+        >
+          <Picker.Item label="Select a service…" value="" />
+          {services.map((svc) => (
+            <Picker.Item key={svc} label={svc} value={svc} />
+          ))}
+        </Picker>
+      </View>
+    </>
+  );
+
+  const searchHeader = (
+    <View style={styles.searchListHeader}>
+      {renderServicePicker()}
+      <View style={styles.resultsHeaderRow}>
+        <Text style={styles.resultsHeading}>Agencies ({agencies.length})</Text>
+        {loading && (
+          <ActivityIndicator size="small" color={theme.colors.accent} />
+        )}
+      </View>
     </View>
   );
 
   return (
     <View style={styles.searchContainer}>
-      <Text style={styles.heading}>Find Services</Text>
-
-      <TouchableOpacity
-        style={styles.servicesToggleBtn}
-        onPress={() => setIsServicePanelOpen((prev) => !prev)}
-      >
-        <Text style={styles.servicesToggleText}>Available Services</Text>
-        <Ionicons
-          name={isServicePanelOpen ? "chevron-up" : "chevron-down"}
-          size={18}
-          color={theme.colors.accent}
+      {!selectedService ? (
+        <>
+          {renderServicePicker()}
+          <Text style={styles.resultsHint}>
+            Choose a service above to see agencies that offer it.
+          </Text>
+        </>
+      ) : (
+        <FlatList
+          ref={agencyListRef}
+          data={agencies}
+          keyExtractor={(item, i) => item.id || item.name || `agency-${i}`}
+          renderItem={renderAgency}
+          ListHeaderComponent={searchHeader}
+          style={styles.resultsList}
+          contentContainerStyle={
+            agencies.length === 0
+              ? styles.resultsListEmpty
+              : styles.resultsListContent
+          }
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            !loading ? (
+              <Text style={styles.resultsHint}>
+                No agencies found for this service.
+              </Text>
+            ) : null
+          }
         />
-      </TouchableOpacity>
-
-      {!isServicePanelOpen && hasActiveServices && (
-        <Text style={styles.activeServicesCollapsedText}>
-          {activeServices.join(", ")}
-        </Text>
-      )}
-
-      {isServicePanelOpen && (
-        <View
-          style={[
-            styles.servicesPanel,
-            !hasActiveServices && styles.servicesPanelExpanded,
-            hasActiveServices && styles.servicesPanelCompact,
-          ]}
-        >
-          <TextInput
-            style={styles.serviceFilterInput}
-            placeholder="Filter services"
-            placeholderTextColor={theme.colors.inputPlaceholder}
-            value={serviceQuery}
-            onChangeText={setServiceQuery}
-          />
-
-          <View style={styles.searchMetaRow}>
-            <Text style={styles.searchMetaLabel}>
-              {activeServices.length} service{activeServices.length === 1 ? "" : "s"} selected
-            </Text>
-            {activeServices.length > 0 && (
-              <TouchableOpacity onPress={clearSelection}>
-                <Text style={styles.clearText}>Clear All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView
-            style={[
-              styles.servicesList,
-              !hasActiveServices && styles.servicesListExpanded,
-              hasActiveServices && styles.servicesListCompact,
-            ]}
-            nestedScrollEnabled
-          >
-            {filteredServices.map((svc) => {
-              const active = !!selectedServices[svc];
-              return (
-                <TouchableOpacity
-                  key={svc}
-                  style={[styles.serviceRow, active && styles.serviceRowActive]}
-                  onPress={() => toggleService(svc)}
-                >
-                  <Text
-                    style={[
-                      styles.serviceRowText,
-                      active && styles.serviceRowTextActive,
-                    ]}
-                  >
-                    {svc}
-                  </Text>
-                  {active && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={theme.colors.accent}
-                    />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {(hasActiveServices || !isServicePanelOpen) && (
-        <View style={styles.resultsSection}>
-          <View style={styles.resultsHeaderRow}>
-            <Text style={styles.resultsHeading}>Agencies ({agencies.length})</Text>
-            {loading && <ActivityIndicator size="small" />}
-          </View>
-
-          {!hasActiveServices ? (
-            <Text style={styles.resultsHint}>
-              Open Available Services and select at least one service.
-            </Text>
-          ) : (
-            <FlatList
-              data={agencies}
-              keyExtractor={(item, i) =>
-                item.id || item.name || `agency-${i}`
-              }
-              renderItem={renderAgency}
-              style={styles.resultsList}
-              contentContainerStyle={{ paddingBottom: 8 }}
-            />
-          )}
-        </View>
       )}
     </View>
   );
@@ -809,6 +731,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     flex: 1,
   },
+  searchListHeader: {
+    marginBottom: 4,
+  },
   agencySelectorWrap: {
     marginBottom: 10,
   },
@@ -855,19 +780,26 @@ const styles = StyleSheet.create({
     marginTop: -2,
     marginBottom: 8,
   },
-  servicesPanel: {
+  servicePickerLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: theme.colors.textSecondary,
+    marginBottom: 6,
+  },
+  servicePickerWrap: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-    backgroundColor: theme.colors.surfacePrimary,
+    marginBottom: 12,
+    backgroundColor: theme.colors.surfaceSecondary,
+    overflow: "hidden",
   },
-  servicesPanelExpanded: {
-    flex: 1,
+  servicePicker: {
+    color: theme.colors.textPrimary,
   },
-  servicesPanelCompact: {
-    maxHeight: "48%",
+  servicePickerItem: {
+    color: theme.colors.textPrimary,
+    fontSize: 16,
   },
   serviceFilterInput: {
     borderWidth: 1,
@@ -897,16 +829,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.accentSoft,
     fontWeight: "600",
-  },
-  servicesList: {
-    maxHeight: 300,
-  },
-  servicesListExpanded: {
-    flex: 1,
-    maxHeight: undefined,
-  },
-  servicesListCompact: {
-    maxHeight: 260,
   },
   serviceRow: {
     flexDirection: "row",
@@ -955,6 +877,13 @@ const styles = StyleSheet.create({
   resultsList: {
     flex: 1,
   },
+  resultsListContent: {
+    paddingBottom: 8,
+  },
+  resultsListEmpty: {
+    flexGrow: 1,
+    paddingTop: 4,
+  },
 
   card: {
     padding: 14,
@@ -977,11 +906,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: "italic",
     color: theme.colors.textMuted,
-  },
-  cardMeta: {
-    marginTop: 8,
-    fontSize: 12,
-    color: theme.colors.accentSoft,
   },
 
   toggleRow: {
