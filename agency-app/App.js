@@ -30,6 +30,7 @@ const theme = {
     textPrimary: "#FAFAFA",
     textPrimaryStrong: "#FFFFFF",
     textSecondary: "#C4C8D4",
+    textBody: "#D7DADC",
     textMuted: "#808495",
     textOnAccent: "#FFFFFF",
     inputPlaceholder: "#808495",
@@ -949,7 +950,7 @@ const styles = StyleSheet.create({
     fontSize: theme.fonts.body,
     lineHeight: 24,
     fontStyle: "italic",
-    color: theme.colors.textMuted,
+    color: theme.colors.textBody,
   },
   cardMoreBtn: {
     marginTop: 10,
