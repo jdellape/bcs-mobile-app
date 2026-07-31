@@ -13,7 +13,8 @@
       "backgroundColor": "#0e1117"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jdellape.blaircountyagencies"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +25,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "92d2d34a-cdc7-4746-b3e0-02ed6d3ac6fa"
+      }
+    },
+    "owner": "jdellape",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/92d2d34a-cdc7-4746-b3e0-02ed6d3ac6fa"
     }
   }
 }
