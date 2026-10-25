@@ -18,7 +18,10 @@ On first submit, let EAS create the App Store Connect app. Use:
 - Bundle ID: `com.jdellape.blaircountyagencies`
 - SKU: `blair-county-services`
 
-Then host `privacy.html` and `support.html` (GitHub Pages, Vercel, or any static host) and paste those URLs into the listing.
+GitHub Pages URLs for the listing:
+
+- Support URL: https://jdellape.github.io/bcs-mobile-app/support.html
+- Privacy Policy URL: https://jdellape.github.io/bcs-mobile-app/privacy.html
 
 ## App information
 
@@ -48,16 +51,11 @@ Find Blair County social service agencies by the help you need.
 
 ## Support URL
 
-Host `store/support.html` (GitHub Pages, Vercel, or any static host), then paste that URL here.
-
-Suggested local files:
-
-- `agency-app/store/support.html`
-- `agency-app/store/privacy.html`
+https://jdellape.github.io/bcs-mobile-app/support.html
 
 ## Privacy Policy URL
 
-Host `store/privacy.html` and paste that URL here.
+https://jdellape.github.io/bcs-mobile-app/privacy.html
 
 Privacy Nutrition Labels: Data Not Collected (confirm this still matches FastAPI server logging before submit).
 
@@ -81,4 +79,13 @@ Public directory of Blair County social service agencies. Choose a service to se
 
 ## Screenshots
 
-Use the 6.7" iPhone images in `store/screenshots/` (1290 x 2796). Replace them with device captures from TestFlight if you prefer photos of the real binary.
+Use the images in `store/screenshots/` (1179 x 2556). Upload them to **iPhone with Dynamic Island (medium display)**. Replace them with device captures from TestFlight if you prefer photos of the real binary.
+
+## Header and Search Results
+
+These are optional creative assets, not screenshots. On the version page, open **Product Page Information → Header and Search Results**.
+
+- Header: `store/creative/header.png` (3840 x 1646, 21:9)
+- Search Results: `store/creative/search-results.png` (3840 x 2560, 3:2)
+
+Do not reuse the screenshot files here. Use **Preview** in App Store Connect to check cropping on iPhone. You do not need In-App Event assets.

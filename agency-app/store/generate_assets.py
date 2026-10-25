@@ -1,4 +1,4 @@
-"""Generate the App Store icon and 6.7-inch iPhone screenshots."""
+"""Generate the App Store icon and required iPhone screenshots."""
 
 from pathlib import Path
 
@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "assets"
 SHOTS = Path(__file__).resolve().parent / "screenshots"
+CREATIVE = Path(__file__).resolve().parent / "creative"
 
 BG = (14, 17, 23)
 ACCENT = (255, 75, 75)
@@ -82,13 +83,15 @@ def draw_card(d, y, name, address, phone, extra=None):
 
 
 def screenshot(name, painter):
-    w, h = 1290, 2796
-    img = Image.new("RGB", (w, h), BG)
+    # Draw at the previous large-display canvas, then export at Apple's
+    # required Dynamic Island (medium display) size: 1179 x 2556.
+    src_w, src_h = 1290, 2796
+    img = Image.new("RGB", (src_w, src_h), BG)
     d = ImageDraw.Draw(img)
-    status_bar(d, w)
-    painter(d, w, h)
+    status_bar(d, src_w)
+    painter(d, src_w, src_h)
     SHOTS.mkdir(parents=True, exist_ok=True)
-    img.save(SHOTS / name)
+    img.resize((1179, 2556), Image.Resampling.LANCZOS).save(SHOTS / name)
 
 
 def shot_empty(d, w, h):
@@ -125,9 +128,63 @@ def shot_expanded(d, w, h):
     )
 
 
+def draw_pin(d, cx, cy, scale, fill=WHITE, hole=ACCENT):
+    pr = int(168 * scale)
+    d.ellipse((cx - pr, cy - pr, cx + pr, cy + pr), fill=fill)
+    d.polygon(
+        [
+            (cx - int(148 * scale), cy + int(86 * scale)),
+            (cx + int(148 * scale), cy + int(86 * scale)),
+            (cx, cy + int(382 * scale)),
+        ],
+        fill=fill,
+    )
+    hr = int(72 * scale)
+    d.ellipse((cx - hr, cy - hr, cx + hr, cy + hr), fill=hole)
+
+
+def make_header():
+    w, h = 3840, 1646
+    img = Image.new("RGB", (w, h), BG)
+    d = ImageDraw.Draw(img)
+    d.ellipse((-220, -420, 1180, 980), fill=ACCENT)
+    draw_pin(d, 520, 620, 1.15, WHITE, ACCENT)
+    d.text((1280, 560), "Blair County Services", font=font(128, True), fill=WHITE)
+    d.text((1280, 740), "Find local help in Blair County.", font=font(72), fill=TEXT_SEC)
+    CREATIVE.mkdir(parents=True, exist_ok=True)
+    img.save(CREATIVE / "header.png")
+
+
+def make_search_results():
+    w, h = 3840, 2560
+    img = Image.new("RGB", (w, h), BG)
+    d = ImageDraw.Draw(img)
+    d.ellipse((2680, -240, 4240, 1320), fill=ACCENT)
+    draw_pin(d, 3480, 520, 0.95, WHITE, ACCENT)
+
+    d.text((220, 360), "Blair County Services", font=font(120, True), fill=WHITE)
+    d.text((220, 540), "Find food, housing, and other\nlocal agencies by the help you need.", font=font(64), fill=TEXT_SEC)
+
+    chips = [("Food", 220), ("Housing", 620), ("Health", 1180)]
+    for label, x in chips:
+        rounded_rect(d, (x, 860, x + 340, 980), 28, SURFACE, BORDER, 4)
+        d.text((x + 48, 888), label, font=font(48, True), fill=WHITE)
+
+    rounded_rect(d, (220, 1120, 2460, 1680), 36, SURFACE, BORDER, 4)
+    d.text((280, 1180), "Community Food Bank", font=font(64, True), fill=WHITE)
+    d.text((280, 1290), "123 Maple Ave, Altoona, PA", font=font(48), fill=TEXT_SEC)
+    d.text((280, 1380), "(814) 555-0142", font=font(48), fill=TEXT_SEC)
+    d.text((280, 1500), "See More Information", font=font(48, True), fill=ACCENT_SOFT)
+
+    CREATIVE.mkdir(parents=True, exist_ok=True)
+    img.save(CREATIVE / "search-results.png")
+
+
 if __name__ == "__main__":
     make_icon()
     screenshot("01-find-services.png", shot_empty)
     screenshot("02-agency-results.png", shot_results)
     screenshot("03-agency-detail.png", shot_expanded)
-    print("Wrote icon and screenshots")
+    make_header()
+    make_search_results()
+    print("Wrote icon, screenshots, and creative assets")
