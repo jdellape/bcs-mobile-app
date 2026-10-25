@@ -7,18 +7,26 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_MANAGE": "true"
+      }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE": "https://bcs-fastapi-995e899b.fastapicloud.dev"
+        "EXPO_PUBLIC_API_BASE": "https://bcs-fastapi-995e899b.fastapicloud.dev",
+        "EXPO_PUBLIC_ENABLE_MANAGE": "true"
       }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://bcs-fastapi-995e899b.fastapicloud.dev",
+        "EXPO_PUBLIC_ENABLE_MANAGE": "false"
+      }
     }
   },
   "submit": {

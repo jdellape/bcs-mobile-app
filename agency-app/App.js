@@ -16,6 +16,9 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE?.trim().replace(/\/$/, "");
+const ENABLE_MANAGE =
+  process.env.EXPO_PUBLIC_ENABLE_MANAGE === "true" ||
+  process.env.EXPO_PUBLIC_ENABLE_MANAGE === "1";
 
 /** Palette aligned with Streamlit default dark theme. */
 const theme = {
@@ -646,76 +649,84 @@ export default function App() {
 
   useEffect(() => {
     loadServices();
-    loadAgencyList();
+    if (ENABLE_MANAGE) {
+      loadAgencyList();
+    }
   }, []);
 
   const handleSaved = () => {
     loadServices();
-    loadAgencyList();
+    if (ENABLE_MANAGE) {
+      loadAgencyList();
+    }
   };
+
+  const showManage = ENABLE_MANAGE && screen === "manage";
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.contentArea}>
-        {screen === "search" ? (
-          <SearchScreen services={services} />
-        ) : (
+        {showManage ? (
           <ManageScreen
             services={services}
             agencyList={agencyList}
             onSaved={handleSaved}
           />
+        ) : (
+          <SearchScreen services={services} />
         )}
       </View>
 
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity
-          style={styles.bottomTabBtn}
-          onPress={() => setScreen("search")}
-        >
-          <Ionicons
-            name={screen === "search" ? "search" : "search-outline"}
-            size={22}
-            color={
-              screen === "search"
-                ? theme.colors.accent
-                : theme.colors.textMuted
-            }
-          />
-          <Text
-            style={[
-              styles.bottomTabText,
-              screen === "search" && styles.bottomTabTextActive,
-            ]}
+      {ENABLE_MANAGE && (
+        <View style={styles.bottomTabBar}>
+          <TouchableOpacity
+            style={styles.bottomTabBtn}
+            onPress={() => setScreen("search")}
           >
-            Search
-          </Text>
-        </TouchableOpacity>
+            <Ionicons
+              name={screen === "search" ? "search" : "search-outline"}
+              size={22}
+              color={
+                screen === "search"
+                  ? theme.colors.accent
+                  : theme.colors.textMuted
+              }
+            />
+            <Text
+              style={[
+                styles.bottomTabText,
+                screen === "search" && styles.bottomTabTextActive,
+              ]}
+            >
+              Search
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.bottomTabBtn}
-          onPress={() => setScreen("manage")}
-        >
-          <MaterialCommunityIcons
-            name={screen === "manage" ? "pencil-plus" : "pencil-plus-outline"}
-            size={22}
-            color={
-              screen === "manage"
-                ? theme.colors.accent
-                : theme.colors.textMuted
-            }
-          />
-          <Text
-            style={[
-              styles.bottomTabText,
-              screen === "manage" && styles.bottomTabTextActive,
-            ]}
+          <TouchableOpacity
+            style={styles.bottomTabBtn}
+            onPress={() => setScreen("manage")}
           >
-            Manage
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <MaterialCommunityIcons
+              name={screen === "manage" ? "pencil-plus" : "pencil-plus-outline"}
+              size={22}
+              color={
+                screen === "manage"
+                  ? theme.colors.accent
+                  : theme.colors.textMuted
+              }
+            />
+            <Text
+              style={[
+                styles.bottomTabText,
+                screen === "manage" && styles.bottomTabTextActive,
+              ]}
+            >
+              Manage
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

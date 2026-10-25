@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "agency-app",
+    "name": "Blair County Services",
     "slug": "agency-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,8 +13,11 @@
       "backgroundColor": "#0e1117"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.jdellape.blaircountyagencies"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jdellape.blaircountyagencies",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
